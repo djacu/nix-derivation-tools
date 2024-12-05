@@ -10,7 +10,7 @@ inputs.nixpkgs.lib.genAttrs
       pkgs = inputs.self.legacyPackages.${system};
     in
     {
-      bootstrap = pkgs.mkShellNoCC {
+      bootstrap = pkgs.mkShell {
         packages = with pkgs; [
           cargo
           rustc
