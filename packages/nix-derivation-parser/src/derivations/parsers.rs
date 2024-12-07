@@ -4,7 +4,7 @@ use crate::strings::parsers::parse_string;
 use nom::{
     bytes::complete::tag,
     combinator::{all_consuming, map},
-    multi::{many0, separated_list0, separated_list1},
+    multi::{separated_list0, separated_list1},
     sequence::{delimited, preceded, separated_pair, tuple},
     IResult,
 };
@@ -12,7 +12,11 @@ use std::path::PathBuf;
 use std::string::String;
 
 fn parse_derivation_outputs(input: &str) -> IResult<&str, Vec<DerivationOutput>> {
-    delimited(tag("["), many0(parse_derivation_output), tag("]"))(input)
+    delimited(
+        tag("["),
+        separated_list0(tag(","), parse_derivation_output),
+        tag("]"),
+    )(input)
 }
 
 // Parser for a single `DerivationOutput`
