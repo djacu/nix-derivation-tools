@@ -125,3 +125,42 @@ pub fn parse_derivation(input: &str) -> IResult<&str, Derivation> {
         },
     )(input)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn derivation_output_all_empty() {
+        assert_eq!(
+            parse_derivation_output(r#"("","","","")"#),
+            Ok((
+                "",
+                DerivationOutput {
+                    key: "".to_string(),
+                    path: PathBuf::from(""),
+                    hash_algo: "".to_string(),
+                    hash: "".to_string()
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn derivation_output_minimal() {
+        assert_eq!(
+            parse_derivation_output(
+                r#"("out","/nix/store/l5x91w2x83z33alsm5pmgl1gslbaqiyy-nixos-system-massflash-24.05.20241009.d51c286","","")"#
+            ),
+            Ok((
+                "",
+                DerivationOutput {
+                    key: "out".to_string(),
+                    path: PathBuf::from("/nix/store/l5x91w2x83z33alsm5pmgl1gslbaqiyy-nixos-system-massflash-24.05.20241009.d51c286"),
+                    hash_algo: "".to_string(),
+                    hash: "".to_string()
+                }
+            ))
+        );
+    }
+}
