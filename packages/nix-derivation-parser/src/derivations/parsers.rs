@@ -14,7 +14,7 @@ use std::string::String;
 fn parse_derivation_outputs(input: &str) -> IResult<&str, Vec<DerivationOutput>> {
     delimited(
         tag("["),
-        separated_list0(tag(","), parse_derivation_output),
+        separated_list1(tag(","), parse_derivation_output),
         tag("]"),
     )(input)
 }
@@ -133,6 +133,7 @@ pub fn parse_derivation(input: &str) -> IResult<&str, Derivation> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use nom::{error::ErrorKind, error_position, Err};
 
     #[test]
     fn derivation_output_all_empty() {
@@ -165,6 +166,14 @@ mod tests {
                     hash: "".to_string()
                 }
             ))
+        );
+    }
+
+    #[test]
+    fn derivation_outputs_empty() {
+        assert_eq!(
+            parse_derivation_outputs(r#"[]"#),
+            Err(Err::Error(error_position!("]", ErrorKind::Tag)))
         );
     }
 
