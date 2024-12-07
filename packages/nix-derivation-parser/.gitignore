@@ -1,0 +1,4 @@
+# nix-derivation-parser
+**/derivations/release_packages/
+**/derivations/release-packages-list
+**/derivations/release-packages.json

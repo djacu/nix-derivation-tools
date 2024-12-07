@@ -134,6 +134,20 @@ pub fn parse_derivation(input: &str) -> IResult<&str, Derivation> {
 mod tests {
     use super::*;
     use nom::{error::ErrorKind, error_position, Err};
+    use std::fs;
+    use std::path::Path;
+
+    #[test]
+    fn release_packages() {
+        let derivation_file_path = Path::new(&std::env::var_os("CARGO_MANIFEST_DIR").unwrap())
+            .join("src/derivations/release_packages");
+        let paths = fs::read_dir(derivation_file_path).unwrap();
+
+        for path in paths {
+            let drv_string = fs::read_to_string(path.expect("There should be files here!").path());
+            assert!(parse_derivation(&drv_string.unwrap()).is_ok())
+        }
+    }
 
     #[test]
     fn derivation_output_all_empty() {
