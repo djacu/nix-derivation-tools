@@ -3,24 +3,32 @@ use crate::strings::parsers::parse_string;
 
 use nom::{
     bytes::complete::tag,
-    combinator::{all_consuming, map},
-    multi::{separated_list0, separated_list1},
+    combinator::{all_consuming, map, opt},
+    multi::{fold_many1, separated_list0, separated_list1},
     sequence::{delimited, preceded, separated_pair, tuple},
     IResult,
 };
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::string::String;
 
-fn parse_derivation_outputs(input: &str) -> IResult<&str, Vec<DerivationOutput>> {
+fn parse_derivation_outputs(input: &str) -> IResult<&str, HashMap<String, DerivationOutput>> {
     delimited(
         tag("["),
-        separated_list1(tag(","), parse_derivation_output),
+        fold_many1(
+            tuple((parse_derivation_output, opt(tag(",")))),
+            HashMap::new,
+            |mut map, ((key, value), _)| {
+                map.insert(key, value);
+                map
+            },
+        ),
         tag("]"),
     )(input)
 }
 
 // Parser for a single `DerivationOutput`
-fn parse_derivation_output(input: &str) -> IResult<&str, DerivationOutput> {
+fn parse_derivation_output(input: &str) -> IResult<&str, (String, DerivationOutput)> {
     delimited(
         tag("("),
         map(
@@ -30,11 +38,15 @@ fn parse_derivation_output(input: &str) -> IResult<&str, DerivationOutput> {
                 preceded(tag(","), parse_string),
                 preceded(tag(","), parse_string),
             )),
-            |(key, path, hash_algo, hash)| DerivationOutput {
-                key,
-                path: PathBuf::from(path),
-                hash_algo,
-                hash,
+            |(key, path, hash_algo, hash)| {
+                (
+                    key,
+                    DerivationOutput {
+                        path: PathBuf::from(path),
+                        hash_algo,
+                        hash,
+                    },
+                )
             },
         ),
         tag(")"),
@@ -167,12 +179,14 @@ mod tests {
             parse_derivation_output(r#"("","","","")"#),
             Ok((
                 "",
-                DerivationOutput {
-                    key: "".to_string(),
-                    path: PathBuf::from(""),
-                    hash_algo: "".to_string(),
-                    hash: "".to_string()
-                }
+                (
+                    "".to_string(),
+                    DerivationOutput {
+                        path: PathBuf::from(""),
+                        hash_algo: "".to_string(),
+                        hash: "".to_string()
+                    }
+                )
             ))
         );
     }
@@ -185,12 +199,14 @@ mod tests {
             ),
             Ok((
                 "",
-                DerivationOutput {
-                    key: "out".to_string(),
-                    path: PathBuf::from("/nix/store/l5x91w2x83z33alsm5pmgl1gslbaqiyy-nixos-system-massflash-24.05.20241009.d51c286"),
-                    hash_algo: "".to_string(),
-                    hash: "".to_string()
-                }
+                (
+                    "out".to_string(),
+                    DerivationOutput {
+                        path: PathBuf::from("/nix/store/l5x91w2x83z33alsm5pmgl1gslbaqiyy-nixos-system-massflash-24.05.20241009.d51c286"),
+                        hash_algo: "".to_string(),
+                        hash: "".to_string()
+                    }
+                )
             ))
         );
     }
@@ -199,7 +215,7 @@ mod tests {
     fn derivation_outputs_empty() {
         assert_eq!(
             parse_derivation_outputs(r#"[]"#),
-            Err(Err::Error(error_position!("]", ErrorKind::Tag)))
+            Err(Err::Error(error_position!("]", ErrorKind::Many1)))
         );
     }
 
@@ -219,40 +235,48 @@ mod tests {
             )),
             Ok((
                 "",
-                vec![
-                    DerivationOutput {
-                        key: "dev".to_string(),
-                        path: PathBuf::from(
-                            "/nix/store/0fji8fg0z6gi3zyvsad7gxamx4ca2477-shadow-4.14.6-dev"
-                        ),
-                        hash_algo: "".to_string(),
-                        hash: "".to_string()
-                    },
-                    DerivationOutput {
-                        key: "man".to_string(),
-                        path: PathBuf::from(
-                            "/nix/store/9bzr2i2vvvjqfrbkrxm4j4zxq73im9nf-shadow-4.14.6-man"
-                        ),
-                        hash_algo: "".to_string(),
-                        hash: "".to_string()
-                    },
-                    DerivationOutput {
-                        key: "out".to_string(),
-                        path: PathBuf::from(
-                            "/nix/store/gwihsgkd13xmk8vwfn2k1nkdi9bys42x-shadow-4.14.6"
-                        ),
-                        hash_algo: "".to_string(),
-                        hash: "".to_string()
-                    },
-                    DerivationOutput {
-                        key: "su".to_string(),
-                        path: PathBuf::from(
-                            "/nix/store/w7lf813b5w0zrmh9sbrwm9xnnm1sh1d1-shadow-4.14.6-su"
-                        ),
-                        hash_algo: "".to_string(),
-                        hash: "".to_string()
-                    },
-                ]
+                HashMap::from([
+                    (
+                        "dev".to_string(),
+                        DerivationOutput {
+                            path: PathBuf::from(
+                                "/nix/store/0fji8fg0z6gi3zyvsad7gxamx4ca2477-shadow-4.14.6-dev"
+                            ),
+                            hash_algo: "".to_string(),
+                            hash: "".to_string()
+                        }
+                    ),
+                    (
+                        "man".to_string(),
+                        DerivationOutput {
+                            path: PathBuf::from(
+                                "/nix/store/9bzr2i2vvvjqfrbkrxm4j4zxq73im9nf-shadow-4.14.6-man"
+                            ),
+                            hash_algo: "".to_string(),
+                            hash: "".to_string()
+                        }
+                    ),
+                    (
+                        "out".to_string(),
+                        DerivationOutput {
+                            path: PathBuf::from(
+                                "/nix/store/gwihsgkd13xmk8vwfn2k1nkdi9bys42x-shadow-4.14.6"
+                            ),
+                            hash_algo: "".to_string(),
+                            hash: "".to_string()
+                        }
+                    ),
+                    (
+                        "su".to_string(),
+                        DerivationOutput {
+                            path: PathBuf::from(
+                                "/nix/store/w7lf813b5w0zrmh9sbrwm9xnnm1sh1d1-shadow-4.14.6-su"
+                            ),
+                            hash_algo: "".to_string(),
+                            hash: "".to_string()
+                        }
+                    ),
+                ])
             ))
         );
     }
