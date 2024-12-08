@@ -150,6 +150,18 @@ mod tests {
     }
 
     #[test]
+    fn misc_derivations() {
+        let derivation_file_path = Path::new(&std::env::var_os("CARGO_MANIFEST_DIR").unwrap())
+            .join("src/derivations/misc_derivations");
+        let paths = fs::read_dir(derivation_file_path).unwrap();
+
+        for path in paths {
+            let drv_string = fs::read_to_string(path.expect("There should be files here!").path());
+            assert!(parse_derivation(&drv_string.unwrap()).is_ok())
+        }
+    }
+
+    #[test]
     fn derivation_output_all_empty() {
         assert_eq!(
             parse_derivation_output(r#"("","","","")"#),
