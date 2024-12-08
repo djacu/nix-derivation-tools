@@ -1,8 +1,8 @@
 use std::path::PathBuf;
+use std::collections::HashMap;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, Hash, PartialEq)]
 pub struct DerivationOutput {
-    pub key: String,
     pub path: PathBuf,
     pub hash_algo: String,
     pub hash: String,
@@ -16,7 +16,7 @@ pub struct DerivationInput {
 
 #[derive(Debug, PartialEq)]
 pub struct Derivation {
-    pub outputs: Vec<DerivationOutput>,
+    pub outputs: HashMap<String, DerivationOutput>,
     pub input_drvs: Vec<DerivationInput>,
     pub input_srcs: Vec<PathBuf>,
     pub system: String,
@@ -24,4 +24,3 @@ pub struct Derivation {
     pub args: Vec<String>,
     pub env: Vec<(String, String)>,
 }
-
