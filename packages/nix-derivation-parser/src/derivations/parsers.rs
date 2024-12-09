@@ -162,6 +162,18 @@ mod tests {
     }
 
     #[test]
+    fn release_packages_ca() {
+        let derivation_file_path = Path::new(&std::env::var_os("CARGO_MANIFEST_DIR").unwrap())
+            .join("src/derivations/release_packages_ca");
+        let paths = fs::read_dir(derivation_file_path).unwrap();
+
+        for path in paths {
+            let drv_string = fs::read_to_string(path.expect("There should be files here!").path());
+            assert!(parse_derivation(&drv_string.unwrap()).is_ok())
+        }
+    }
+
+    #[test]
     fn misc_derivations() {
         let derivation_file_path = Path::new(&std::env::var_os("CARGO_MANIFEST_DIR").unwrap())
             .join("src/derivations/misc_derivations");
