@@ -7,19 +7,21 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 NIX_FILE="$SCRIPT_DIR/release-packages.nix"
 JSON_FILE="$SCRIPT_DIR/release-packages.json"
 LIST_FILE="$SCRIPT_DIR/release-packages-list"
-DRVS_PATH="$SCRIPT_DIR/release_packages/"
+DRVS_PATH="$SCRIPT_DIR/release_packages_ca/"
 
 if [[ ! -d $DRVS_PATH ]]; then
   mkdir "$DRVS_PATH"
 fi
 find "$DRVS_PATH" -type f -name '*.drv' -delete
-#
+
 # need to instantiate them into existence first
 nix-instantiate \
   --strict \
   --json \
   --arg path $NIXPKGS_PATH \
+  --arg caDrvs true \
   --attr pkgSet \
+  --extra-experimental-features ca-derivations \
   "$NIX_FILE" 
 
 # then we can get their paths into json
@@ -28,7 +30,9 @@ nix-instantiate \
   --strict \
   --json \
   --arg path $NIXPKGS_PATH \
+  --arg caDrvs true \
   --attr pkgSet \
+  --extra-experimental-features ca-derivations \
   "$NIX_FILE" \
   >"$JSON_FILE"
 
