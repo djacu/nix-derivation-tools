@@ -1,5 +1,6 @@
 # nix-derivation-parser
 **/derivations/release_packages/
+**/derivations/release_packages_ca/
 **/derivations/misc_derivations/
 **/derivations/release-packages-list
 **/derivations/release-packages.json
