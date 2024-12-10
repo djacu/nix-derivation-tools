@@ -12,6 +12,10 @@ let
     types
     ;
 
+  inherit (lib.lists)
+    optionals
+    ;
+
   inherit (lib.modules)
     mkIf
     ;
@@ -113,16 +117,50 @@ in
       example = ./.genemichaels.json;
       default = configFormat.generate ".genemichaels.json" cfg.settings;
     };
+
+    threadCount = mkOption {
+      description = ''
+        How many threads to use for formatting multiple files. Set to `null` to
+        default to the number of cores on the system.
+      '';
+      type = types.nullOr types.ints.unsigned;
+      example = 1;
+      default = null;
+    };
+
+    includes = mkOption {
+      description = ''
+        Path / file patterns to include for genemichaels.
+      '';
+      type = types.listOf types.str;
+      default = [
+        "*.rs"
+      ];
+    };
+
+    excludes = mkOption {
+      description = ''
+        Path / file patterns to exclude for genemichaels.
+      '';
+      type = types.listOf types.str;
+      default = [ ];
+    };
   };
 
   config = mkIf cfg.enable {
     settings.formatter.genemichaels = {
       command = "${cfg.package}/bin/genemichaels";
-      options = [
-        "--config"
-        (toString cfg.settingsFile)
-      ];
-      includes = [ "*.rs" ];
+      options =
+        (optionals (cfg.threadCount != null) [
+          "--thread-count"
+          (toString cfg.threadCount)
+        ])
+        ++ [
+          "--config"
+          (toString cfg.settingsFile)
+        ];
+      includes = cfg.includes;
+      excludes = cfg.excludes;
     };
   };
 }
