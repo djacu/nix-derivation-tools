@@ -11,10 +11,15 @@ inputs.nixpkgs.lib.genAttrs
     in
     {
       bootstrap = pkgs.mkShell {
-        packages = with pkgs; [
-          cargo
-          rustc
-        ];
+        packages =
+          with pkgs;
+          [
+            cargo
+            rustc
+          ]
+          ++ inputs.self.checks.${system}.pre-commit-check.enabledPackages;
+
+        inherit (inputs.self.checks.${system}.pre-commit-check) shellHook;
       };
     }
   )

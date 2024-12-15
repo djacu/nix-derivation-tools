@@ -1,5 +1,6 @@
 # Nix
 result/
+.pre-commit-config.yaml
 
 # Rust
 debug/
