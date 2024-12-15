@@ -11,24 +11,33 @@ inputs.nixpkgs.lib.genAttrs
     let
       pkgs = inputs.self.legacyPackages.${system};
     in
-    (inputs.treefmt-nix.lib.evalModule pkgs {
-      enableDefaultExcludes = true;
-      projectRootFile = "flake.nix";
-      programs = {
-        mdformat.enable = true;
-        mdsh.enable = true;
-        nixfmt.enable = true;
-        rustfmt.enable = true;
-        shellcheck.enable = true;
-      };
-      settings.global.excludes = [
-        "LICENSE"
-        ".git-blame-ignore-revs"
+    (inputs.treefmt-nix.lib.evalModule pkgs (
+      { ... }:
+      {
+        imports = [
+          ./genemichaels.nix
+        ];
 
-        # nix-derivation-parser
-        "**/nix-derivation-parser/**/*.drv"
-        "**/nix-derivation-parser/.gitignore"
-        "**/nix-derivation-parser/Cargo.toml"
-      ];
-    })
+        config = {
+          enableDefaultExcludes = true;
+          projectRootFile = "flake.nix";
+          programs = {
+            genemichaels.enable = true;
+            mdformat.enable = true;
+            mdsh.enable = true;
+            nixfmt.enable = true;
+            shellcheck.enable = true;
+          };
+          settings.global.excludes = [
+            "LICENSE"
+            ".git-blame-ignore-revs"
+
+            # nix-derivation-parser
+            "**/nix-derivation-parser/**/*.drv"
+            "**/nix-derivation-parser/.gitignore"
+            "**/nix-derivation-parser/Cargo.toml"
+          ];
+        };
+      }
+    ))
   )
