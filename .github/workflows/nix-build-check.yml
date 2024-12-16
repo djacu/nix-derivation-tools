@@ -1,0 +1,70 @@
+name: nix build and check
+
+on:
+  pull_request:
+    types:
+      - edited
+      - opened
+      - reopened
+      - synchronize
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  nix-flake-check:
+    name: Run nix flake check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Common Setup
+        uses: ./.github/actions/common-setup
+        with:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check
+        run: |
+          nix flake check --show-trace --print-build-logs
+
+  nix-eval-package-names:
+    name: Get all package names
+    runs-on: ubuntu-latest
+    needs: nix-flake-check
+    outputs:
+      package-names: ${{ steps.packages.outputs.names }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Common Setup
+        uses: ./.github/actions/common-setup
+        with:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get all package names
+        id: packages
+        run: |
+          packages=$(nix eval .#packages.x86_64-linux --apply builtins.attrNames --json)
+          echo 'Found these packages to build.'
+          echo $packages | nix run nixpkgs#jq -- '.[]'
+          echo "names=$packages" >> $GITHUB_OUTPUT
+
+  build-package:
+    name: Build ${{ matrix.package-name }} package
+    needs: nix-eval-package-names
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        package-name: ${{ fromJSON(needs.nix-eval-package-names.outputs.package-names) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Common Setup
+        uses: ./.github/actions/common-setup
+        with:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build ${{ matrix.package-name }}
+        run: |
+          nix build --print-build-logs .#${{ matrix.package-name }}
