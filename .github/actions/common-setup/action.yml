@@ -1,0 +1,21 @@
+name: "Common Setup"
+description: "Checkout, install Nix, and setup Cachix."
+inputs:
+  CACHIX_AUTH_TOKEN:
+    required: true
+    description: "Cachix Auth Token"
+  GITHUB_TOKEN:
+    required: true
+    description: "Github Secret Token"
+runs:
+  using: "composite"
+  steps:
+    - name: Install Nix
+      uses: cachix/install-nix-action@v30
+      with:
+        github_access_token: ${{ inputs.GITHUB_TOKEN }}
+    - name: Setup Cachix
+      uses: cachix/cachix-action@v15
+      with:
+        name: djacu-nix-derivation-tools
+        authToken: "${{ inputs.CACHIX_AUTH_TOKEN }}"
