@@ -16,6 +16,7 @@ genAttrs
   ]
   (system: {
     inherit (inputs.self.legacyPackages.${system})
+      crate-publish
       nix-derivation-parser
       ;
   })
