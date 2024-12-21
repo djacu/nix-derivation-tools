@@ -2,6 +2,9 @@
 name = "nix-derivation-parser"
 version = "0.1.0"
 edition = "2021"
+description = "A Nix derivation parser and renderer."
+repository = "https://github.com/djacu/nix-derivation-parser"
+license-file = "LICENSE"
 
 [dependencies]
 nom = "7.1.3"
