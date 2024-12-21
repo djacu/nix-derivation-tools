@@ -10,7 +10,6 @@ on:
 jobs:
   publish-crates-dryrun:
     name: Publish crates - dryrun
-    needs: build-package
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

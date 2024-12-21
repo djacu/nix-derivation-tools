@@ -12,7 +12,6 @@ jobs:
   publish-crates:
     if: github.event.pull_request.merged == true
     name: Publish crates
-    needs: build-package
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
