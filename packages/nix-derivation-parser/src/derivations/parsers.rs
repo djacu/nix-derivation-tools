@@ -93,7 +93,7 @@ fn parse_derivation_input(input: &str) -> IResult<&str, (PathBuf, DerivationInpu
 }
 
 fn parse_source_inputs(input: &str) -> IResult<&str, Vec<PathBuf>> {
-    delimited(tag("["), separated_list0(tag(","), map(parse_string, |x| PathBuf::from(x))), tag("]"))(input)
+    delimited(tag("["), separated_list0(tag(","), map(parse_string, PathBuf::from)), tag("]"))(input)
 }
 
 fn parse_system(input: &str) -> IResult<&str, String> {
@@ -101,7 +101,7 @@ fn parse_system(input: &str) -> IResult<&str, String> {
 }
 
 fn parse_builder(input: &str) -> IResult<&str, PathBuf> {
-    map(parse_string, |x| PathBuf::from(x))(input)
+    map(parse_string, PathBuf::from)(input)
 }
 
 fn parse_builder_args(input: &str) -> IResult<&str, Vec<String>> {
