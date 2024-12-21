@@ -1,0 +1,24 @@
+name: publish dryrun
+
+on:
+  workflow_run:
+    workflows: [nix build and check]
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  publish-crates-dryrun:
+    name: Publish crates - dryrun
+    needs: build-package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Common Setup
+        uses: ./.github/actions/common-setup
+        with:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish - dryrun
+        run: nix run .#crate-publish -- dryrun
