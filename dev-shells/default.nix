@@ -16,6 +16,7 @@ inputs.nixpkgs.lib.genAttrs
           [
             cargo
             rustc
+            toml-cli
           ]
           ++ inputs.self.checks.${system}.pre-commit-check.enabledPackages;
 
