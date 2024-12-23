@@ -1,4 +1,10 @@
 use crate::strings::types::StringFragment;
+
+extern crate alloc;
+
+use alloc::string::String;
+use core::char::from_u32;
+use core::num::ParseIntError;
 use nom::{
     branch::alt,
     bytes::streaming::{
@@ -27,7 +33,6 @@ use nom::{
     },
     IResult,
 };
-use std::string::String;
 
 // The string parsing functions are copied from github.com/rust-bakery/nom
 // Originally from tag: 7.1.3 Specifically from this file:
@@ -35,14 +40,15 @@ use std::string::String;
 // constructed from the bottom up: first we write parsers for the smallest
 // elements (escaped characters), then combine them into larger parsers.
 /// Parse a unicode sequence, of the form u{XXXX}, where XXXX is 1 to 6 hexadecimal
-/// numerals. We will combine this later with parse_escaped_char to parse sequences
-/// like \u{00AC}.
+/// numerals. We will combine this later with `parse_escaped_char` to parse
+/// sequences like \u{00AC}.
+#[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_unicode<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
 where
-    E: ParseError<&'a str> + FromExternalError<&'a str, std::num::ParseIntError> {
+    E: ParseError<&'a str> + FromExternalError<&'a str, ParseIntError> {
     // `take_while_m_n` parses between `m` and `n` bytes (inclusive) that match a
     // predicate. `parse_hex` here parses between 1 and 6 hexadecimal numerals.
-    let parse_hex = take_while_m_n(1, 6, |c: char| c.is_ascii_hexdigit());
+    let parse_hex = take_while_m_n(1, 6, |character: char| character.is_ascii_hexdigit());
 
     // `preceded` takes a prefix parser, and if it succeeds, returns the result of the
     // body parser. In this case, it parses u{XXXX}.
@@ -63,13 +69,14 @@ where
     // function returns None, map_opt returns an error. In this case, because not all
     // u32 values are valid unicode code points, we have to fallibly convert to char
     // with from_u32.
-    map_opt(parse_u32, std::char::from_u32)(input)
+    map_opt(parse_u32, from_u32)(input)
 }
 
 /// Parse an escaped character: \n, \t, \r, \u{00AC}, etc.
+#[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_escaped_char<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
 where
-    E: ParseError<&'a str> + FromExternalError<&'a str, std::num::ParseIntError> {
+    E: ParseError<&'a str> + FromExternalError<&'a str, ParseIntError> {
     preceded(
         char('\\'),
         // `alt` tries each parser in sequence, returning the result of the first
@@ -93,11 +100,13 @@ where
 
 /// Parse a backslash, followed by any amount of whitespace. This is used later to
 /// discard any escaped whitespace.
+#[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_escaped_whitespace<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
     preceded(char('\\'), multispace1)(input)
 }
 
 /// Parse a non-empty block of text that doesn't include \ or "
+#[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_literal<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
     // `is_not` parses a string of 0 or more characters that aren't one of the given
     // characters.
@@ -106,14 +115,15 @@ fn parse_literal<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str,
     // `verify` runs a parser, then runs a verification function on the output of the
     // parser. The verification function accepts out output only if it returns true.
     // In this case, we want to ensure that the output of is_not is non-empty.
-    verify(not_quote_slash, |s: &str| !s.is_empty())(input)
+    verify(not_quote_slash, |literal: &str| !literal.is_empty())(input)
 }
 
-/// Combine parse_literal, parse_escaped_whitespace, and parse_escaped_char into a
-/// StringFragment.
+/// Combine `parse_literal`, `parse_escaped_whitespace`, and `parse_escaped_char`
+/// into a `StringFragment`.
+#[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_fragment<'a, E>(input: &'a str) -> IResult<&'a str, StringFragment<'a>, E>
 where
-    E: ParseError<&'a str> + FromExternalError<&'a str, std::num::ParseIntError> {
+    E: ParseError<&'a str> + FromExternalError<&'a str, ParseIntError> {
     alt((
         // The `map` combinator runs a parser, then applies a function to the output of
         // that parser.
@@ -123,11 +133,13 @@ where
     ))(input)
 }
 
-/// Parse a string. Use a loop of parse_fragment and push all of the fragments into
-/// an output string.
+/// Parse a string. Use a loop of `parse_fragment` and push all of the fragments
+/// into an output string.
+#[expect(clippy::implicit_return, reason = "clippy will ping pong on this forever.")]
+#[inline]
 pub fn parse_string<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
 where
-    E: ParseError<&'a str> + FromExternalError<&'a str, std::num::ParseIntError> {
+    E: ParseError<&'a str> + FromExternalError<&'a str, ParseIntError> {
     // fold_many0 is the equivalent of iterator::fold. It runs a parser in a loop, and
     // for each output value, calls a folding function on each output value.
     let build_string = fold_many0(
@@ -138,8 +150,8 @@ where
         // Our folding function. For each fragment, append the fragment to the string.
         |mut string, fragment| {
             match fragment {
-                StringFragment::Literal(s) => string.push_str(s),
-                StringFragment::EscapedChar(c) => string.push(c),
+                StringFragment::Literal(frag) => string.push_str(frag),
+                StringFragment::EscapedChar(frag) => string.push(frag),
                 StringFragment::EscapedWS => { },
             }
             string

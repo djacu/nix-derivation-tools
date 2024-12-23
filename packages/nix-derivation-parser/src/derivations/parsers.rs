@@ -4,6 +4,10 @@ use crate::derivations::types::{
     DerivationOutput,
 };
 use crate::strings::parsers::parse_string;
+
+extern crate alloc;
+
+use alloc::string::String;
 use nom::{
     bytes::complete::tag,
     combinator::{
@@ -26,8 +30,8 @@ use nom::{
 };
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::string::String;
 
+#[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_derivation_outputs(input: &str) -> IResult<&str, HashMap<String, DerivationOutput>> {
     delimited(
         tag("["),
@@ -40,6 +44,7 @@ fn parse_derivation_outputs(input: &str) -> IResult<&str, HashMap<String, Deriva
 }
 
 // Parser for a single `DerivationOutput`
+#[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_derivation_output(input: &str) -> IResult<&str, (String, DerivationOutput)> {
     delimited(
         tag("("),
@@ -64,6 +69,7 @@ fn parse_derivation_output(input: &str) -> IResult<&str, (String, DerivationOutp
     )(input)
 }
 
+#[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_derivation_inputs(input: &str) -> IResult<&str, HashMap<PathBuf, DerivationInput>> {
     delimited(
         tag("["),
@@ -75,6 +81,7 @@ fn parse_derivation_inputs(input: &str) -> IResult<&str, HashMap<PathBuf, Deriva
     )(input)
 }
 
+#[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_derivation_input(input: &str) -> IResult<&str, (PathBuf, DerivationInput)> {
     delimited(
         tag("("),
@@ -92,30 +99,37 @@ fn parse_derivation_input(input: &str) -> IResult<&str, (PathBuf, DerivationInpu
     )
 }
 
+#[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_source_inputs(input: &str) -> IResult<&str, Vec<PathBuf>> {
     delimited(tag("["), separated_list0(tag(","), map(parse_string, PathBuf::from)), tag("]"))(input)
 }
 
+#[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_system(input: &str) -> IResult<&str, String> {
     parse_string(input)
 }
 
+#[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_builder(input: &str) -> IResult<&str, PathBuf> {
     map(parse_string, PathBuf::from)(input)
 }
 
+#[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_builder_args(input: &str) -> IResult<&str, Vec<String>> {
     delimited(tag("["), separated_list0(tag(","), parse_string), tag("]"))(input)
 }
 
+#[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_environment_variable(input: &str) -> IResult<&str, (String, String)> {
     delimited(tag("("), separated_pair(parse_string, tag(","), parse_string), tag(")"))(input)
 }
 
+#[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_environment_variables(input: &str) -> IResult<&str, Vec<(String, String)>> {
     delimited(tag("["), separated_list0(tag(","), parse_environment_variable), tag("]"))(input)
 }
 
+#[inline]
 pub fn parse_derivation(input: &str) -> IResult<&str, Derivation> {
     map(
         all_consuming(
