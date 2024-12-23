@@ -135,7 +135,6 @@ where
 
 /// Parse a string. Use a loop of `parse_fragment` and push all of the fragments
 /// into an output string.
-#[expect(clippy::implicit_return, reason = "clippy will ping pong on this forever.")]
 #[inline]
 pub fn parse_string<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
 where
