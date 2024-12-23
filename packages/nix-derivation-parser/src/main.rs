@@ -8,11 +8,11 @@ fn main() {
         ).unwrap();
     match parse_derivation(&input) {
         Ok((remaining, parsed)) => {
-            println!("Parsed: {:#?}", parsed);
-            println!("Remaining: {:#?}", remaining);
+            println!("Parsed: {parsed:#?}");
+            println!("Remaining: {remaining:#?}");
         },
         Err(err) => {
-            eprintln!("Error parsing DerivationOutput: {:?}", err);
+            eprintln!("Error parsing DerivationOutput: {err:?}");
         },
     };
 }
