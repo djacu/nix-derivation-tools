@@ -8,12 +8,17 @@ use crate::strings::parsers::parse_string;
 extern crate alloc;
 
 use alloc::string::String;
+use core::num::ParseIntError;
 use nom::{
     bytes::complete::tag,
     combinator::{
         all_consuming,
         map,
         opt,
+    },
+    error::{
+        FromExternalError,
+        ParseError,
     },
     multi::{
         fold_many1,
@@ -100,32 +105,44 @@ fn parse_derivation_input(input: &str) -> IResult<&str, (PathBuf, DerivationInpu
 }
 
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_source_inputs(input: &str) -> IResult<&str, Vec<PathBuf>> {
+fn parse_source_inputs<'input, E>(input: &'input str) -> IResult<&'input str, Vec<PathBuf>, E>
+where
+    E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(tag("["), separated_list0(tag(","), map(parse_string, PathBuf::from)), tag("]"))(input)
 }
 
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_system(input: &str) -> IResult<&str, String> {
+fn parse_system<'input, E>(input: &'input str) -> IResult<&'input str, String, E>
+where
+    E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     parse_string(input)
 }
 
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_builder(input: &str) -> IResult<&str, PathBuf> {
+fn parse_builder<'input, E>(input: &'input str) -> IResult<&'input str, PathBuf, E>
+where
+    E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     map(parse_string, PathBuf::from)(input)
 }
 
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_builder_args(input: &str) -> IResult<&str, Vec<String>> {
+fn parse_builder_args<'input, E>(input: &'input str) -> IResult<&'input str, Vec<String>, E>
+where
+    E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(tag("["), separated_list0(tag(","), parse_string), tag("]"))(input)
 }
 
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_environment_variable(input: &str) -> IResult<&str, (String, String)> {
+fn parse_environment_variable<'input, E>(input: &'input str) -> IResult<&'input str, (String, String), E>
+where
+    E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(tag("("), separated_pair(parse_string, tag(","), parse_string), tag(")"))(input)
 }
 
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_environment_variables(input: &str) -> IResult<&str, Vec<(String, String)>> {
+fn parse_environment_variables<'input, E>(input: &'input str) -> IResult<&'input str, Vec<(String, String)>, E>
+where
+    E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(tag("["), separated_list0(tag(","), parse_environment_variable), tag("]"))(input)
 }
 
