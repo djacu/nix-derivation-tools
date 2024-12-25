@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+#[expect(clippy::exhaustive_structs, reason = "Derivation format is very stable.")]
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub struct DerivationOutput {
     pub path: PathBuf,
@@ -8,11 +9,13 @@ pub struct DerivationOutput {
     pub hash: String,
 }
 
+#[expect(clippy::exhaustive_structs, reason = "Derivation format is very stable.")]
 #[derive(Debug, PartialEq)]
 pub struct DerivationInput {
     pub value: Vec<String>,
 }
 
+#[expect(clippy::exhaustive_structs, reason = "Derivation format is very stable.")]
 #[derive(Debug, PartialEq)]
 pub struct Derivation {
     pub outputs: HashMap<String, DerivationOutput>,
