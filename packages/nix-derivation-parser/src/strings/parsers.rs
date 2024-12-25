@@ -5,7 +5,7 @@ extern crate alloc;
 use alloc::string::String;
 use core::char::from_u32;
 use core::num::ParseIntError;
-use nom::{
+use winnow::{
     branch::alt,
     bytes::streaming::{
         is_not,

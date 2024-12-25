@@ -9,7 +9,7 @@ extern crate alloc;
 
 use alloc::string::String;
 use core::num::ParseIntError;
-use nom::{
+use winnow::{
     bytes::complete::tag,
     combinator::{
         all_consuming,
@@ -199,7 +199,7 @@ pub fn parse_derivation(input: &str) -> IResult<&str, Derivation> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nom::{
+    use winnow::{
         error::ErrorKind,
         error_position,
         Err,
@@ -269,7 +269,7 @@ mod tests {
 
     #[test]
     fn derivation_outputs_empty() {
-        assert_eq!(parse_derivation_outputs(r#"[]"#), Err(Err::Error(error_position!("]", ErrorKind::Many1))));
+        assert_eq!(parse_derivation_outputs(r#"[]"#), Err(Err::Backtrack(error_position!("]", ErrorKind::Many1))));
     }
 
     #[test]
