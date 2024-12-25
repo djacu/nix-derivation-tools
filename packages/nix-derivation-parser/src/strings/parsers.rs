@@ -13,8 +13,8 @@
 //!   the next non-whitespace character
 //!
 //! The string parsing functions are copied from github.com/winnow-rs/winnow
-//! Originally from tag: v0.5.40 Specifically from this file:
-//! github.com/winnow-rs/winnow/blob/v0.5.40/examples/string/parser.rs
+//! Originally from tag: v0.6.20 Specifically from this file:
+//! github.com/winnow-rs/winnow/blob/v0.6.20/examples/string/parser.rs
 use crate::strings::types::StringFragment;
 
 extern crate alloc;
@@ -41,7 +41,7 @@ use winnow::token::{
 
 /// Parse a string. Use a loop of `parse_fragment` and push all of the fragments
 /// into an output string.
-pub fn parse_string<'a, E>(input: &mut &'a str) -> PResult<String, E>
+pub(crate) fn parse_string<'a, E>(input: &mut &'a str) -> PResult<String, E>
 where
     E: ParserError<&'a str> + FromExternalError<&'a str, ParseIntError> {
     // Repeat::fold is the equivalent of iterator::fold. It runs a parser in a loop,
