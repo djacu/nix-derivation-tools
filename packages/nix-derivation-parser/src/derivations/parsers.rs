@@ -12,25 +12,21 @@ use core::num::ParseIntError;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use winnow::{
-    bytes::tag,
     combinator::{
         opt,
+        delimited,
         fold_repeat,
+        preceded,
+        separated0,
+        separated1,
+        separated_pair,
     },
     error::{
         FromExternalError,
-        ParseError,
+        ParserError,
     },
-    multi::{
-        separated0,
-        separated1,
-    },
-    sequence::{
-        delimited,
-        preceded,
-        separated_pair,
-    },
-    IResult,
+    token::tag,
+    PResult,
     Parser,
 };
 
@@ -38,7 +34,9 @@ use winnow::{
 ///
 /// There must be at least one derivation output.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_derivation_outputs(input: &str) -> IResult<&str, HashMap<String, DerivationOutput>> {
+fn parse_derivation_outputs<'input, E>(input: &mut &'input str) -> PResult<HashMap<String, DerivationOutput>, E>
+where
+    E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(
         tag("["),
         fold_repeat(1.., (parse_derivation_output, opt(tag(","))), HashMap::new, |mut map, ((key, value), _)| {
@@ -51,7 +49,9 @@ fn parse_derivation_outputs(input: &str) -> IResult<&str, HashMap<String, Deriva
 
 /// Parses a single `DerivationOutput`.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_derivation_output(input: &str) -> IResult<&str, (String, DerivationOutput)> {
+fn parse_derivation_output<'input, E>(input: &mut &'input str) -> PResult<(String, DerivationOutput), E>
+where
+    E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(
         tag("("),
         (
@@ -74,7 +74,9 @@ fn parse_derivation_output(input: &str) -> IResult<&str, (String, DerivationOutp
 ///
 /// There must be at least one derivation input.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_derivation_inputs(input: &str) -> IResult<&str, HashMap<PathBuf, DerivationInput>> {
+fn parse_derivation_inputs<'input, E>(input: &mut &'input str) -> PResult<HashMap<PathBuf, DerivationInput>, E>
+where
+    E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(
         tag("["),
         fold_repeat(1.., (parse_derivation_input, opt(tag(","))), HashMap::new, |mut map, ((key, value), _)| {
@@ -87,7 +89,9 @@ fn parse_derivation_inputs(input: &str) -> IResult<&str, HashMap<PathBuf, Deriva
 
 /// Parses a single `DerivationInput`.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_derivation_input(input: &str) -> IResult<&str, (PathBuf, DerivationInput)> {
+fn parse_derivation_input<'input, E>(input: &mut &'input str) -> PResult<(PathBuf, DerivationInput), E>
+where
+    E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(
         tag("("),
         separated_pair(
@@ -101,25 +105,25 @@ fn parse_derivation_input(input: &str) -> IResult<&str, (PathBuf, DerivationInpu
 
 /// Parses a list of source inputs.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_source_inputs<'input, E>(input: &'input str) -> IResult<&'input str, Vec<PathBuf>, E>
+fn parse_source_inputs<'input, E>(input: &mut &'input str) -> PResult<Vec<PathBuf>, E>
 where
-    E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
+    E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(tag("["), separated0(parse_string.map(PathBuf::from), tag(",")), tag("]")).parse_next(input)
 }
 
 /// Parses a system.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_system<'input, E>(input: &'input str) -> IResult<&'input str, String, E>
+fn parse_system<'input, E>(input: &mut &'input str) -> PResult<String, E>
 where
-    E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
+    E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     parse_string(input)
 }
 
 /// Parses a builder.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_builder<'input, E>(input: &'input str) -> IResult<&'input str, PathBuf, E>
+fn parse_builder<'input, E>(input: &mut &'input str) -> PResult<PathBuf, E>
 where
-    E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
+    E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     parse_string.map(PathBuf::from).parse_next(input)
 }
 
@@ -127,17 +131,17 @@ where
 ///
 /// This list can be empty.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_builder_args<'input, E>(input: &'input str) -> IResult<&'input str, Vec<String>, E>
+fn parse_builder_args<'input, E>(input: &mut &'input str) -> PResult<Vec<String>, E>
 where
-    E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
+    E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(tag("["), separated0(parse_string, tag(",")), tag("]")).parse_next(input)
 }
 
 /// Parses a single environment variable.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_environment_variable<'input, E>(input: &'input str) -> IResult<&'input str, (String, String), E>
+fn parse_environment_variable<'input, E>(input: &mut &'input str) -> PResult<(String, String), E>
 where
-    E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
+    E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(tag("("), separated_pair(parse_string, tag(","), parse_string), tag(")")).parse_next(input)
 }
 
@@ -145,15 +149,17 @@ where
 ///
 /// This list can be empty.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
-fn parse_environment_variables<'input, E>(input: &'input str) -> IResult<&'input str, Vec<(String, String)>, E>
+fn parse_environment_variables<'input, E>(input: &mut &'input str) -> PResult<Vec<(String, String)>, E>
 where
-    E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
+    E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(tag("["), separated0(parse_environment_variable, tag(",")), tag("]")).parse_next(input)
 }
 
 /// Parses a `Derivation`.
 #[inline]
-pub fn parse_derivation(input: &str) -> IResult<&str, Derivation> {
+pub fn parse_derivation<'input, E>(input: &mut &'input str) -> PResult<Derivation, E>
+where
+    E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(
         tag("Derive("),
         (
@@ -184,10 +190,6 @@ mod tests {
     use super::*;
     use std::fs;
     use std::path::Path;
-    use winnow::error::{
-        ErrMode,
-        ErrorKind,
-    };
 
     #[test]
     fn release_packages() {
@@ -196,7 +198,7 @@ mod tests {
         let paths = fs::read_dir(derivation_file_path).unwrap();
         for path in paths {
             let drv_string = fs::read_to_string(path.expect("There should be files here!").path());
-            assert!(parse_derivation(&drv_string.unwrap()).is_ok())
+            assert!(parse_derivation::<()>.parse(&drv_string.unwrap()).is_ok())
         }
     }
 
@@ -209,7 +211,7 @@ mod tests {
         let paths = fs::read_dir(derivation_file_path).unwrap();
         for path in paths {
             let drv_string = fs::read_to_string(path.expect("There should be files here!").path());
-            assert!(parse_derivation(&drv_string.unwrap()).is_ok())
+            assert!(parse_derivation::<()>.parse(&drv_string.unwrap()).is_ok())
         }
     }
 
@@ -220,47 +222,48 @@ mod tests {
         let paths = fs::read_dir(derivation_file_path).unwrap();
         for path in paths {
             let drv_string = fs::read_to_string(path.expect("There should be files here!").path());
-            assert!(parse_derivation(&drv_string.unwrap()).is_ok())
+            assert!(parse_derivation::<()>.parse(&drv_string.unwrap()).is_ok())
         }
     }
 
     #[test]
     fn derivation_output_all_empty() {
-        assert_eq!(parse_derivation_output(r#"("","","","")"#), Ok(("", ("".to_string(), DerivationOutput {
+        assert_eq!(parse_derivation_output::<()>.parse(r#"("","","","")"#), Ok(("".to_string(), DerivationOutput {
             path: PathBuf::from(""),
             hash_algo: "".to_string(),
             hash: "".to_string(),
-        }))));
+        })));
     }
 
     #[test]
     fn derivation_output_minimal() {
         assert_eq!(
-            parse_derivation_output(
+            parse_derivation_output::<
+                (),
+            >.parse(
                 r#"("out","/nix/store/l5x91w2x83z33alsm5pmgl1gslbaqiyy-nixos-system-massflash-24.05.20241009.d51c286","","")"#,
             ),
-            Ok(("", ("out".to_string(), DerivationOutput {
+            Ok(("out".to_string(), DerivationOutput {
                 path: PathBuf::from(
                     "/nix/store/l5x91w2x83z33alsm5pmgl1gslbaqiyy-nixos-system-massflash-24.05.20241009.d51c286",
                 ),
                 hash_algo: "".to_string(),
                 hash: "".to_string(),
-            })))
+            }))
         );
     }
 
     #[test]
     fn derivation_outputs_empty() {
-        assert_eq!(
-            parse_derivation_outputs(r#"[]"#),
-            Err(ErrMode::Backtrack(winnow::error::Error::from_error_kind("]", ErrorKind::Many)))
-        );
+        assert!(parse_derivation_outputs::<()>.parse(r#"[]"#).is_err());
     }
 
     #[test]
     fn derivation_output_shadow() {
         assert_eq!(
-            parse_derivation_outputs(
+            parse_derivation_outputs::<
+                (),
+            >.parse(
                 concat!(
                     r#"["#,
                     r#"("dev","/nix/store/0fji8fg0z6gi3zyvsad7gxamx4ca2477-shadow-4.14.6-dev","","")"#,
@@ -273,7 +276,7 @@ mod tests {
                     r#"]"#
                 ),
             ),
-            Ok(("", HashMap::from([("dev".to_string(), DerivationOutput {
+            Ok(HashMap::from([("dev".to_string(), DerivationOutput {
                 path: PathBuf::from("/nix/store/0fji8fg0z6gi3zyvsad7gxamx4ca2477-shadow-4.14.6-dev"),
                 hash_algo: "".to_string(),
                 hash: "".to_string(),
@@ -289,14 +292,16 @@ mod tests {
                 path: PathBuf::from("/nix/store/w7lf813b5w0zrmh9sbrwm9xnnm1sh1d1-shadow-4.14.6-su"),
                 hash_algo: "".to_string(),
                 hash: "".to_string(),
-            })])))
+            })]))
         );
     }
 
     #[test]
     fn derivation_inputs_shadow() {
         assert_eq!(
-            parse_derivation_inputs(
+            parse_derivation_inputs::<
+                (),
+            >.parse(
                 concat!(
                     r#"["#,
                     r#"("/nix/store/2a4nqx30swmddxgd5f3y1h8gynwb1mp9-bison-3.8.2.drv",["out"])"#,
@@ -321,90 +326,83 @@ mod tests {
                 ),
             ),
             Ok(
-                (
-                    "",
-                    HashMap::from(
-                        [
-                            (
-                                PathBuf::from("/nix/store/2a4nqx30swmddxgd5f3y1h8gynwb1mp9-bison-3.8.2.drv"),
-                                DerivationInput { value: vec!["out".to_string()] },
+                HashMap::from(
+                    [
+                        (
+                            PathBuf::from("/nix/store/2a4nqx30swmddxgd5f3y1h8gynwb1mp9-bison-3.8.2.drv"),
+                            DerivationInput { value: vec!["out".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/81l2lyg7hx6zwlb7yamncj1b2pbz5rj1-tcb-1.2.drv"),
+                            DerivationInput { value: vec!["dev".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/9jqhmw0ksi0gab01asfd8gfj3wv3ahg6-docbook-xsl-nons-1.79.2.drv"),
+                            DerivationInput { value: vec!["out".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/9vyx2lhbiq2c6jg6xz68whkl29qy60j2-autoreconf-hook.drv"),
+                            DerivationInput { value: vec!["out".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/b5gkdv8336qp2wx7qppmd54nl29y0zh4-libxcrypt-4.4.36.drv"),
+                            DerivationInput { value: vec!["out".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/d4rparlxpipwi3y717ijj917h0lbmrbj-glibc-2.39-52.drv"),
+                            DerivationInput { value: vec!["bin".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/dgj37ph9745jy0bnzfz2hl1x8yjhaawy-itstool-2.0.7.drv"),
+                            DerivationInput { value: vec!["out".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/hl008qyglrzrsyg59pc499jxaf1rvgjz-source.drv"),
+                            DerivationInput { value: vec!["out".to_string()] },
+                        ),
+                        (
+                            PathBuf::from(
+                                "/nix/store/hll9cxnh7mm2maiy06vbxl6zk2y65kvh-fix-implicit-getdef_bool.patch.drv",
                             ),
-                            (
-                                PathBuf::from("/nix/store/81l2lyg7hx6zwlb7yamncj1b2pbz5rj1-tcb-1.2.drv"),
-                                DerivationInput { value: vec!["dev".to_string()] },
-                            ),
-                            (
-                                PathBuf::from(
-                                    "/nix/store/9jqhmw0ksi0gab01asfd8gfj3wv3ahg6-docbook-xsl-nons-1.79.2.drv",
-                                ),
-                                DerivationInput { value: vec!["out".to_string()] },
-                            ),
-                            (
-                                PathBuf::from("/nix/store/9vyx2lhbiq2c6jg6xz68whkl29qy60j2-autoreconf-hook.drv"),
-                                DerivationInput { value: vec!["out".to_string()] },
-                            ),
-                            (
-                                PathBuf::from("/nix/store/b5gkdv8336qp2wx7qppmd54nl29y0zh4-libxcrypt-4.4.36.drv"),
-                                DerivationInput { value: vec!["out".to_string()] },
-                            ),
-                            (
-                                PathBuf::from("/nix/store/d4rparlxpipwi3y717ijj917h0lbmrbj-glibc-2.39-52.drv"),
-                                DerivationInput { value: vec!["bin".to_string()] },
-                            ),
-                            (
-                                PathBuf::from("/nix/store/dgj37ph9745jy0bnzfz2hl1x8yjhaawy-itstool-2.0.7.drv"),
-                                DerivationInput { value: vec!["out".to_string()] },
-                            ),
-                            (
-                                PathBuf::from("/nix/store/hl008qyglrzrsyg59pc499jxaf1rvgjz-source.drv"),
-                                DerivationInput { value: vec!["out".to_string()] },
-                            ),
-                            (
-                                PathBuf::from(
-                                    "/nix/store/hll9cxnh7mm2maiy06vbxl6zk2y65kvh-fix-implicit-getdef_bool.patch.drv",
-                                ),
-                                DerivationInput { value: vec!["out".to_string()] },
-                            ),
-                            (
-                                PathBuf::from("/nix/store/icld2xsizd7xabkfr396chagxcv7qaal-libxslt-1.1.39.drv"),
-                                DerivationInput { value: vec!["dev".to_string()] },
-                            ),
-                            (
-                                PathBuf::from("/nix/store/kblxy5ggi81bli1vkz550vpvmy36wlbp-linux-pam-1.6.1.drv"),
-                                DerivationInput { value: vec!["out".to_string()] },
-                            ),
-                            (
-                                PathBuf::from("/nix/store/lzc3r3m5yp5xj9qnbz56zrkq94d5hhsy-flex-2.6.4.drv"),
-                                DerivationInput { value: vec!["out".to_string()] },
-                            ),
-                            (
-                                PathBuf::from(
-                                    "/nix/store/nz98jzc49vlkky3vpq5lwjxh94b207fh-pkg-config-wrapper-0.29.2.drv",
-                                ),
-                                DerivationInput { value: vec!["out".to_string()] },
-                            ),
-                            (
-                                PathBuf::from("/nix/store/pfkmysygw53mz830rhwfkadnzdxv96yw-libxml2-2.12.7.drv"),
-                                DerivationInput { value: vec!["dev".to_string()] },
-                            ),
-                            (
-                                PathBuf::from("/nix/store/wkgn8l6fyq3avhcpw1caj2r1z9dsw4r0-docbook-xml-4.5.drv"),
-                                DerivationInput { value: vec!["out".to_string()] },
-                            ),
-                            (
-                                PathBuf::from("/nix/store/wql9zbydwdr0nqxkm20crcbhn68wb4pc-stdenv-linux.drv"),
-                                DerivationInput { value: vec!["out".to_string()] },
-                            ),
-                            (
-                                PathBuf::from("/nix/store/xzz7s4cc4bakhaavx3qyn10sl9w7x445-libbsd-0.11.8.drv"),
-                                DerivationInput { value: vec!["dev".to_string()] },
-                            ),
-                            (
-                                PathBuf::from("/nix/store/ysv6wz83jkvg7d65j0js4bml9k0yc4sv-bash-5.2p32.drv"),
-                                DerivationInput { value: vec!["out".to_string()] },
-                            ),
-                        ],
-                    ),
+                            DerivationInput { value: vec!["out".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/icld2xsizd7xabkfr396chagxcv7qaal-libxslt-1.1.39.drv"),
+                            DerivationInput { value: vec!["dev".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/kblxy5ggi81bli1vkz550vpvmy36wlbp-linux-pam-1.6.1.drv"),
+                            DerivationInput { value: vec!["out".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/lzc3r3m5yp5xj9qnbz56zrkq94d5hhsy-flex-2.6.4.drv"),
+                            DerivationInput { value: vec!["out".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/nz98jzc49vlkky3vpq5lwjxh94b207fh-pkg-config-wrapper-0.29.2.drv"),
+                            DerivationInput { value: vec!["out".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/pfkmysygw53mz830rhwfkadnzdxv96yw-libxml2-2.12.7.drv"),
+                            DerivationInput { value: vec!["dev".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/wkgn8l6fyq3avhcpw1caj2r1z9dsw4r0-docbook-xml-4.5.drv"),
+                            DerivationInput { value: vec!["out".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/wql9zbydwdr0nqxkm20crcbhn68wb4pc-stdenv-linux.drv"),
+                            DerivationInput { value: vec!["out".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/xzz7s4cc4bakhaavx3qyn10sl9w7x445-libbsd-0.11.8.drv"),
+                            DerivationInput { value: vec!["dev".to_string()] },
+                        ),
+                        (
+                            PathBuf::from("/nix/store/ysv6wz83jkvg7d65j0js4bml9k0yc4sv-bash-5.2p32.drv"),
+                            DerivationInput { value: vec!["out".to_string()] },
+                        ),
+                    ],
                 ),
             )
         )
