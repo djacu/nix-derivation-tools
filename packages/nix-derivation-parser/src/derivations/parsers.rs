@@ -15,17 +15,16 @@ use winnow::{
     combinator::{
         opt,
         delimited,
-        fold_repeat,
         preceded,
-        separated0,
-        separated1,
+        repeat,
+        separated,
         separated_pair,
     },
     error::{
         FromExternalError,
         ParserError,
     },
-    token::tag,
+    token::literal,
     PResult,
     Parser,
 };
@@ -38,12 +37,15 @@ fn parse_derivation_outputs<'input, E>(input: &mut &'input str) -> PResult<HashM
 where
     E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(
-        tag("["),
-        fold_repeat(1.., (parse_derivation_output, opt(tag(","))), HashMap::new, |mut map, ((key, value), _)| {
+        literal("["),
+        repeat(
+            1..,
+            (parse_derivation_output, opt(literal(","))),
+        ).fold(HashMap::new, |mut map, ((key, value), _)| {
             map.insert(key, value);
             map
         }),
-        tag("]"),
+        literal("]"),
     ).parse_next(input)
 }
 
@@ -53,12 +55,12 @@ fn parse_derivation_output<'input, E>(input: &mut &'input str) -> PResult<(Strin
 where
     E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(
-        tag("("),
+        literal("("),
         (
             parse_string,
-            preceded(tag(","), parse_string),
-            preceded(tag(","), parse_string),
-            preceded(tag(","), parse_string),
+            preceded(literal(","), parse_string),
+            preceded(literal(","), parse_string),
+            preceded(literal(","), parse_string),
         ).map(|(key, path, hash_algo, hash)| {
             (key, DerivationOutput {
                 path: PathBuf::from(path),
@@ -66,7 +68,7 @@ where
                 hash,
             })
         }),
-        tag(")"),
+        literal(")"),
     ).parse_next(input)
 }
 
@@ -78,12 +80,15 @@ fn parse_derivation_inputs<'input, E>(input: &mut &'input str) -> PResult<HashMa
 where
     E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(
-        tag("["),
-        fold_repeat(1.., (parse_derivation_input, opt(tag(","))), HashMap::new, |mut map, ((key, value), _)| {
+        literal("["),
+        repeat(
+            1..,
+            (parse_derivation_input, opt(literal(","))),
+        ).fold(HashMap::new, |mut map, ((key, value), _)| {
             map.insert(key, value);
             map
         }),
-        tag("]"),
+        literal("]"),
     ).parse_next(input)
 }
 
@@ -93,13 +98,13 @@ fn parse_derivation_input<'input, E>(input: &mut &'input str) -> PResult<(PathBu
 where
     E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(
-        tag("("),
+        literal("("),
         separated_pair(
             parse_string,
-            tag(","),
-            delimited(tag("["), separated1(parse_string, tag(",")), tag("]")),
+            literal(","),
+            delimited(literal("["), separated(1.., parse_string, literal(",")), literal("]")),
         ).map(|(key, value)| (PathBuf::from(key), DerivationInput { value })),
-        tag(")"),
+        literal(")"),
     ).parse_next(input)
 }
 
@@ -108,7 +113,11 @@ where
 fn parse_source_inputs<'input, E>(input: &mut &'input str) -> PResult<Vec<PathBuf>, E>
 where
     E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
-    delimited(tag("["), separated0(parse_string.map(PathBuf::from), tag(",")), tag("]")).parse_next(input)
+    delimited(
+        literal("["),
+        separated(0.., parse_string.map(PathBuf::from), literal(",")),
+        literal("]"),
+    ).parse_next(input)
 }
 
 /// Parses a system.
@@ -134,7 +143,7 @@ where
 fn parse_builder_args<'input, E>(input: &mut &'input str) -> PResult<Vec<String>, E>
 where
     E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
-    delimited(tag("["), separated0(parse_string, tag(",")), tag("]")).parse_next(input)
+    delimited(literal("["), separated(0.., parse_string, literal(",")), literal("]")).parse_next(input)
 }
 
 /// Parses a single environment variable.
@@ -142,7 +151,11 @@ where
 fn parse_environment_variable<'input, E>(input: &mut &'input str) -> PResult<(String, String), E>
 where
     E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
-    delimited(tag("("), separated_pair(parse_string, tag(","), parse_string), tag(")")).parse_next(input)
+    delimited(
+        literal("("),
+        separated_pair(parse_string, literal(","), parse_string),
+        literal(")"),
+    ).parse_next(input)
 }
 
 /// Parses a list of environment variables.
@@ -152,7 +165,11 @@ where
 fn parse_environment_variables<'input, E>(input: &mut &'input str) -> PResult<Vec<(String, String)>, E>
 where
     E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
-    delimited(tag("["), separated0(parse_environment_variable, tag(",")), tag("]")).parse_next(input)
+    delimited(
+        literal("["),
+        separated(0.., parse_environment_variable, literal(",")),
+        literal("]"),
+    ).parse_next(input)
 }
 
 /// Parses a `Derivation`.
@@ -161,17 +178,17 @@ pub fn parse_derivation<'input, E>(input: &mut &'input str) -> PResult<Derivatio
 where
     E: ParserError<&'input str> + FromExternalError<&'input str, ParseIntError> {
     delimited(
-        tag("Derive("),
+        literal("Derive("),
         (
             parse_derivation_outputs,
-            preceded(tag(","), parse_derivation_inputs),
-            preceded(tag(","), parse_source_inputs),
-            preceded(tag(","), parse_system),
-            preceded(tag(","), parse_builder),
-            preceded(tag(","), parse_builder_args),
-            preceded(tag(","), parse_environment_variables),
+            preceded(literal(","), parse_derivation_inputs),
+            preceded(literal(","), parse_source_inputs),
+            preceded(literal(","), parse_system),
+            preceded(literal(","), parse_builder),
+            preceded(literal(","), parse_builder_args),
+            preceded(literal(","), parse_environment_variables),
         ),
-        tag(")"),
+        literal(")"),
     )
         .map(|(outputs, input_drvs, input_srcs, system, builder, args, env)| Derivation {
             outputs,
