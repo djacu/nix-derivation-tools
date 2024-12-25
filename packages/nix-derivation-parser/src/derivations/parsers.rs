@@ -44,7 +44,7 @@ fn parse_derivation_outputs(input: &str) -> IResult<&str, HashMap<String, Deriva
             map
         }),
         tag("]"),
-    )(input)
+    ).parse_next(input)
 }
 
 /// Parses a single `DerivationOutput`.
@@ -52,23 +52,20 @@ fn parse_derivation_outputs(input: &str) -> IResult<&str, HashMap<String, Deriva
 fn parse_derivation_output(input: &str) -> IResult<&str, (String, DerivationOutput)> {
     delimited(
         tag("("),
-        Parser::map(
-            (
-                parse_string,
-                preceded(tag(","), parse_string),
-                preceded(tag(","), parse_string),
-                preceded(tag(","), parse_string),
-            ),
-            |(key, path, hash_algo, hash)| {
-                (key, DerivationOutput {
-                    path: PathBuf::from(path),
-                    hash_algo,
-                    hash,
-                })
-            },
-        ),
+        (
+            parse_string,
+            preceded(tag(","), parse_string),
+            preceded(tag(","), parse_string),
+            preceded(tag(","), parse_string),
+        ).map(|(key, path, hash_algo, hash)| {
+            (key, DerivationOutput {
+                path: PathBuf::from(path),
+                hash_algo,
+                hash,
+            })
+        }),
         tag(")"),
-    )(input)
+    ).parse_next(input)
 }
 
 /// Parses a list of `DerivationInput`s.
@@ -83,7 +80,7 @@ fn parse_derivation_inputs(input: &str) -> IResult<&str, HashMap<PathBuf, Deriva
             map
         }),
         tag("]"),
-    )(input)
+    ).parse_next(input)
 }
 
 /// Parses a single `DerivationInput`.
@@ -97,9 +94,7 @@ fn parse_derivation_input(input: &str) -> IResult<&str, (PathBuf, DerivationInpu
             delimited(tag("["), separated1(parse_string, tag(",")), tag("]")),
         ).map(|(key, value)| (PathBuf::from(key), DerivationInput { value })),
         tag(")"),
-    )(
-        input,
-    )
+    ).parse_next(input)
 }
 
 /// Parses a list of source inputs.
@@ -107,7 +102,7 @@ fn parse_derivation_input(input: &str) -> IResult<&str, (PathBuf, DerivationInpu
 fn parse_source_inputs<'input, E>(input: &'input str) -> IResult<&'input str, Vec<PathBuf>, E>
 where
     E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
-    delimited(tag("["), separated0(Parser::map(parse_string, PathBuf::from), tag(",")), tag("]"))(input)
+    delimited(tag("["), separated0(parse_string.map(PathBuf::from), tag(",")), tag("]")).parse_next(input)
 }
 
 /// Parses a system.
@@ -133,7 +128,7 @@ where
 fn parse_builder_args<'input, E>(input: &'input str) -> IResult<&'input str, Vec<String>, E>
 where
     E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
-    delimited(tag("["), separated0(parse_string, tag(",")), tag("]"))(input)
+    delimited(tag("["), separated0(parse_string, tag(",")), tag("]")).parse_next(input)
 }
 
 /// Parses a single environment variable.
@@ -141,7 +136,7 @@ where
 fn parse_environment_variable<'input, E>(input: &'input str) -> IResult<&'input str, (String, String), E>
 where
     E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
-    delimited(tag("("), separated_pair(parse_string, tag(","), parse_string), tag(")"))(input)
+    delimited(tag("("), separated_pair(parse_string, tag(","), parse_string), tag(")")).parse_next(input)
 }
 
 /// Parses a list of environment variables.
@@ -151,7 +146,7 @@ where
 fn parse_environment_variables<'input, E>(input: &'input str) -> IResult<&'input str, Vec<(String, String)>, E>
 where
     E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
-    delimited(tag("["), separated0(parse_environment_variable, tag(",")), tag("]"))(input)
+    delimited(tag("["), separated0(parse_environment_variable, tag(",")), tag("]")).parse_next(input)
 }
 
 /// Parses a `Derivation`.
@@ -256,7 +251,7 @@ mod tests {
     fn derivation_outputs_empty() {
         assert_eq!(
             parse_derivation_outputs(r#"[]"#),
-            Err(ErrMode::Backtrack(winnow::error::Error::from_error_kind("]", ErrorKind::Many1)))
+            Err(ErrMode::Backtrack(winnow::error::Error::from_error_kind("]", ErrorKind::Many)))
         );
     }
 

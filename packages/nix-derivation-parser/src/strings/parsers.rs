@@ -13,8 +13,8 @@
 //!   the next non-whitespace character
 //!
 //! The string parsing functions are copied from github.com/winnow-rs/winnow
-//! Originally from tag: v0.3.8 Specifically from this file:
-//! github.com/winnow-rs/winnow/blob/v0.3.8/examples/string/parser.rs
+//! Originally from tag: v0.4.11 Specifically from this file:
+//! github.com/winnow-rs/winnow/blob/v0.4.11/examples/string/parser.rs
 use crate::strings::types::StringFragment;
 
 extern crate alloc;
@@ -22,22 +22,21 @@ extern crate alloc;
 use alloc::string::String;
 use core::char::from_u32;
 use core::num::ParseIntError;
-use winnow::branch::alt;
-use winnow::bytes::{
-    one_of,
-    take_till1,
-    take_while_m_n,
+use winnow::ascii::multispace1;
+use winnow::combinator::alt;
+use winnow::combinator::fold_repeat;
+use winnow::combinator::{
+    delimited,
+    preceded,
 };
-use winnow::character::multispace1;
 use winnow::error::{
     FromExternalError,
     ParseError,
 };
-use winnow::multi::fold_many0;
 use winnow::prelude::*;
-use winnow::sequence::{
-    delimited,
-    preceded,
+use winnow::token::{
+    take_till1,
+    take_while,
 };
 
 /// Parse a string. Use a loop of `parse_fragment` and push all of the fragments
@@ -45,9 +44,10 @@ use winnow::sequence::{
 pub fn parse_string<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
 where
     E: ParseError<&'a str> + FromExternalError<&'a str, ParseIntError> {
-    // fold_many0 is the equivalent of iterator::fold. It runs a parser in a loop, and
-    // for each output value, calls a folding function on each output value.
-    let build_string = fold_many0(
+    // fold_repeat is the equivalent of iterator::fold. It runs a parser in a loop,
+    // and for each output value, calls a folding function on each output value.
+    let build_string = fold_repeat(
+        0..,
         // Our parser function – parses a single string fragment
         parse_fragment,
         // Our init value, an empty string
@@ -65,9 +65,9 @@ where
 
     // Finally, parse the string. Note that, if `build_string` could accept a raw "
     // character, the closing delimiter " would never match. When using `delimited`
-    // with a looping parser (like fold_many0), be sure that the loop won't
+    // with a looping parser (like fold_repeat), be sure that the loop won't
     // accidentally match your closing delimiter!
-    delimited('"', build_string, '"')(input)
+    delimited('"', build_string, '"').parse_next(input)
 }
 
 /// Combine `parse_literal`, `parse_escaped_whitespace`, and `parse_escaped_char`
@@ -81,7 +81,7 @@ where
         parse_literal.map(StringFragment::Literal),
         parse_escaped_char.map(StringFragment::EscapedChar),
         parse_escaped_whitespace.value(StringFragment::EscapedWS),
-    ))(input)
+    )).parse_next(input)
 }
 
 /// Parse a non-empty block of text that doesn't include \ or "
@@ -112,16 +112,16 @@ where
             // The `value` parser returns a fixed value (the first argument) if its parser
             // (the second argument) succeeds. In these cases, it looks for the marker
             // characters (n, r, t, etc) and returns the matching character (\n, \r, \t, etc).
-            one_of('n').value('\n'),
-            one_of('r').value('\r'),
-            one_of('t').value('\t'),
-            one_of('b').value('\u{08}'),
-            one_of('f').value('\u{0C}'),
-            one_of('\\').value('\\'),
-            one_of('/').value('/'),
-            one_of('"').value('"'),
+            'n'.value('\n'),
+            'r'.value('\r'),
+            't'.value('\t'),
+            'b'.value('\u{08}'),
+            'f'.value('\u{0C}'),
+            '\\'.value('\\'),
+            '/'.value('/'),
+            '"'.value('"'),
         )),
-    )(input)
+    ).parse_next(input)
 }
 
 /// Parse a unicode sequence, of the form u{XXXX}, where XXXX is 1 to 6 hexadecimal
@@ -130,9 +130,9 @@ where
 fn parse_unicode<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
 where
     E: ParseError<&'a str> + FromExternalError<&'a str, ParseIntError> {
-    // `take_while_m_n` parses between `m` and `n` bytes (inclusive) that match a
+    // `take_while` parses between `m` and `n` bytes (inclusive) that match a
     // predicate. `parse_hex` here parses between 1 and 6 hexadecimal numerals.
-    let parse_hex = take_while_m_n(1, 6, |c: char| c.is_ascii_hexdigit());
+    let parse_hex = take_while(1 ..= 6, |c: char| c.is_ascii_hexdigit());
 
     // `preceded` takes a prefix parser, and if it succeeds, returns the result of the
     // body parser. In this case, it parses u{XXXX}.
@@ -144,12 +144,12 @@ where
         delimited('{', parse_hex, '}'),
     );
 
-    // `map_res` takes the result of a parser and applies a function that returns a
+    // `try_map` takes the result of a parser and applies a function that returns a
     // Result. In this case we take the hex bytes from parse_hex and attempt to
     // convert them to a u32.
-    let parse_u32 = parse_delimited_hex.map_res(move |hex| u32::from_str_radix(hex, 16));
+    let parse_u32 = parse_delimited_hex.try_map(move |hex| u32::from_str_radix(hex, 16));
 
-    // verify_map is like map_res, but it takes an Option instead of a Result. If the
+    // verify_map is like try_map, but it takes an Option instead of a Result. If the
     // function returns None, verify_map returns an error. In this case, because not
     // all u32 values are valid unicode code points, we have to fallibly convert to
     // char with from_u32.
@@ -159,5 +159,5 @@ where
 /// Parse a backslash, followed by any amount of whitespace. This is used later to
 /// discard any escaped whitespace.
 fn parse_escaped_whitespace<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
-    preceded('\\', multispace1)(input)
+    preceded('\\', multispace1).parse_next(input)
 }
