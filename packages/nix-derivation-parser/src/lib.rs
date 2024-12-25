@@ -1,3 +1,4 @@
+//! A module for parsing derivations from `.drv` files.
 #![allow(clippy::implicit_return, reason = "clippy will ping pong on this forever.")]
 #![allow(
     clippy::self_named_module_files,
