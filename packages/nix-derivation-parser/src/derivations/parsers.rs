@@ -36,6 +36,9 @@ use nom::{
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+/// Parses a list of `DerivationOutput`s.
+///
+/// There must be at least one derivation output.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_derivation_outputs(input: &str) -> IResult<&str, HashMap<String, DerivationOutput>> {
     delimited(
@@ -48,7 +51,7 @@ fn parse_derivation_outputs(input: &str) -> IResult<&str, HashMap<String, Deriva
     )(input)
 }
 
-// Parser for a single `DerivationOutput`
+/// Parses a single `DerivationOutput`.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_derivation_output(input: &str) -> IResult<&str, (String, DerivationOutput)> {
     delimited(
@@ -74,6 +77,9 @@ fn parse_derivation_output(input: &str) -> IResult<&str, (String, DerivationOutp
     )(input)
 }
 
+/// Parses a list of `DerivationInput`s.
+///
+/// There must be at least one derivation input.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_derivation_inputs(input: &str) -> IResult<&str, HashMap<PathBuf, DerivationInput>> {
     delimited(
@@ -86,6 +92,7 @@ fn parse_derivation_inputs(input: &str) -> IResult<&str, HashMap<PathBuf, Deriva
     )(input)
 }
 
+/// Parses a single `DerivationInput`.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_derivation_input(input: &str) -> IResult<&str, (PathBuf, DerivationInput)> {
     delimited(
@@ -104,6 +111,7 @@ fn parse_derivation_input(input: &str) -> IResult<&str, (PathBuf, DerivationInpu
     )
 }
 
+/// Parses a list of source inputs.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_source_inputs<'input, E>(input: &'input str) -> IResult<&'input str, Vec<PathBuf>, E>
 where
@@ -111,6 +119,7 @@ where
     delimited(tag("["), separated_list0(tag(","), map(parse_string, PathBuf::from)), tag("]"))(input)
 }
 
+/// Parses a system.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_system<'input, E>(input: &'input str) -> IResult<&'input str, String, E>
 where
@@ -118,6 +127,7 @@ where
     parse_string(input)
 }
 
+/// Parses a builder.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_builder<'input, E>(input: &'input str) -> IResult<&'input str, PathBuf, E>
 where
@@ -125,6 +135,9 @@ where
     map(parse_string, PathBuf::from)(input)
 }
 
+/// Parses a list of builder arguments.
+///
+/// This list can be empty.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_builder_args<'input, E>(input: &'input str) -> IResult<&'input str, Vec<String>, E>
 where
@@ -132,6 +145,7 @@ where
     delimited(tag("["), separated_list0(tag(","), parse_string), tag("]"))(input)
 }
 
+/// Parses a single environment variable.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_environment_variable<'input, E>(input: &'input str) -> IResult<&'input str, (String, String), E>
 where
@@ -139,6 +153,9 @@ where
     delimited(tag("("), separated_pair(parse_string, tag(","), parse_string), tag(")"))(input)
 }
 
+/// Parses a list of environment variables.
+///
+/// This list can be empty.
 #[expect(clippy::single_call_fn, reason = "Parser functions are not inlined for readability.")]
 fn parse_environment_variables<'input, E>(input: &'input str) -> IResult<&'input str, Vec<(String, String)>, E>
 where
@@ -146,6 +163,7 @@ where
     delimited(tag("["), separated_list0(tag(","), parse_environment_variable), tag("]"))(input)
 }
 
+/// Parses a `Derivation`.
 #[inline]
 pub fn parse_derivation(input: &str) -> IResult<&str, Derivation> {
     map(
