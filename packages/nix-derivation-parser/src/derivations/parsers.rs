@@ -9,32 +9,28 @@ extern crate alloc;
 
 use alloc::string::String;
 use core::num::ParseIntError;
+use std::collections::HashMap;
+use std::path::PathBuf;
 use winnow::{
-    bytes::complete::tag,
-    combinator::{
-        all_consuming,
-        map,
-        opt,
-    },
+    bytes::tag,
+    combinator::opt,
     error::{
         FromExternalError,
         ParseError,
     },
     multi::{
         fold_many1,
-        separated_list0,
-        separated_list1,
+        separated0,
+        separated1,
     },
     sequence::{
         delimited,
         preceded,
         separated_pair,
-        tuple,
     },
     IResult,
+    Parser,
 };
-use std::collections::HashMap;
-use std::path::PathBuf;
 
 /// Parses a list of `DerivationOutput`s.
 ///
@@ -43,7 +39,7 @@ use std::path::PathBuf;
 fn parse_derivation_outputs(input: &str) -> IResult<&str, HashMap<String, DerivationOutput>> {
     delimited(
         tag("["),
-        fold_many1(tuple((parse_derivation_output, opt(tag(",")))), HashMap::new, |mut map, ((key, value), _)| {
+        fold_many1((parse_derivation_output, opt(tag(","))), HashMap::new, |mut map, ((key, value), _)| {
             map.insert(key, value);
             map
         }),
@@ -56,14 +52,12 @@ fn parse_derivation_outputs(input: &str) -> IResult<&str, HashMap<String, Deriva
 fn parse_derivation_output(input: &str) -> IResult<&str, (String, DerivationOutput)> {
     delimited(
         tag("("),
-        map(
-            tuple(
-                (
-                    parse_string,
-                    preceded(tag(","), parse_string),
-                    preceded(tag(","), parse_string),
-                    preceded(tag(","), parse_string),
-                ),
+        Parser::map(
+            (
+                parse_string,
+                preceded(tag(","), parse_string),
+                preceded(tag(","), parse_string),
+                preceded(tag(","), parse_string),
             ),
             |(key, path, hash_algo, hash)| {
                 (key, DerivationOutput {
@@ -84,7 +78,7 @@ fn parse_derivation_output(input: &str) -> IResult<&str, (String, DerivationOutp
 fn parse_derivation_inputs(input: &str) -> IResult<&str, HashMap<PathBuf, DerivationInput>> {
     delimited(
         tag("["),
-        fold_many1(tuple((parse_derivation_input, opt(tag(",")))), HashMap::new, |mut map, ((key, value), _)| {
+        fold_many1((parse_derivation_input, opt(tag(","))), HashMap::new, |mut map, ((key, value), _)| {
             map.insert(key, value);
             map
         }),
@@ -97,14 +91,11 @@ fn parse_derivation_inputs(input: &str) -> IResult<&str, HashMap<PathBuf, Deriva
 fn parse_derivation_input(input: &str) -> IResult<&str, (PathBuf, DerivationInput)> {
     delimited(
         tag("("),
-        map(
-            separated_pair(
-                parse_string,
-                tag(","),
-                delimited(tag("["), separated_list1(tag(","), parse_string), tag("]")),
-            ),
-            |(key, value)| (PathBuf::from(key), DerivationInput { value }),
-        ),
+        separated_pair(
+            parse_string,
+            tag(","),
+            delimited(tag("["), separated1(parse_string, tag(",")), tag("]")),
+        ).map(|(key, value)| (PathBuf::from(key), DerivationInput { value })),
         tag(")"),
     )(
         input,
@@ -116,7 +107,7 @@ fn parse_derivation_input(input: &str) -> IResult<&str, (PathBuf, DerivationInpu
 fn parse_source_inputs<'input, E>(input: &'input str) -> IResult<&'input str, Vec<PathBuf>, E>
 where
     E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
-    delimited(tag("["), separated_list0(tag(","), map(parse_string, PathBuf::from)), tag("]"))(input)
+    delimited(tag("["), separated0(Parser::map(parse_string, PathBuf::from), tag(",")), tag("]"))(input)
 }
 
 /// Parses a system.
@@ -132,7 +123,7 @@ where
 fn parse_builder<'input, E>(input: &'input str) -> IResult<&'input str, PathBuf, E>
 where
     E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
-    map(parse_string, PathBuf::from)(input)
+    parse_string.map(PathBuf::from).parse_next(input)
 }
 
 /// Parses a list of builder arguments.
@@ -142,7 +133,7 @@ where
 fn parse_builder_args<'input, E>(input: &'input str) -> IResult<&'input str, Vec<String>, E>
 where
     E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
-    delimited(tag("["), separated_list0(tag(","), parse_string), tag("]"))(input)
+    delimited(tag("["), separated0(parse_string, tag(",")), tag("]"))(input)
 }
 
 /// Parses a single environment variable.
@@ -160,31 +151,26 @@ where
 fn parse_environment_variables<'input, E>(input: &'input str) -> IResult<&'input str, Vec<(String, String)>, E>
 where
     E: ParseError<&'input str> + FromExternalError<&'input str, ParseIntError> {
-    delimited(tag("["), separated_list0(tag(","), parse_environment_variable), tag("]"))(input)
+    delimited(tag("["), separated0(parse_environment_variable, tag(",")), tag("]"))(input)
 }
 
 /// Parses a `Derivation`.
 #[inline]
 pub fn parse_derivation(input: &str) -> IResult<&str, Derivation> {
-    map(
-        all_consuming(
-            delimited(
-                tag("Derive("),
-                tuple(
-                    (
-                        parse_derivation_outputs,
-                        preceded(tag(","), parse_derivation_inputs),
-                        preceded(tag(","), parse_source_inputs),
-                        preceded(tag(","), parse_system),
-                        preceded(tag(","), parse_builder),
-                        preceded(tag(","), parse_builder_args),
-                        preceded(tag(","), parse_environment_variables),
-                    ),
-                ),
-                tag(")"),
-            ),
+    delimited(
+        tag("Derive("),
+        (
+            parse_derivation_outputs,
+            preceded(tag(","), parse_derivation_inputs),
+            preceded(tag(","), parse_source_inputs),
+            preceded(tag(","), parse_system),
+            preceded(tag(","), parse_builder),
+            preceded(tag(","), parse_builder_args),
+            preceded(tag(","), parse_environment_variables),
         ),
-        |(outputs, input_drvs, input_srcs, system, builder, args, env)| Derivation {
+        tag(")"),
+    )
+        .map(|(outputs, input_drvs, input_srcs, system, builder, args, env)| Derivation {
             outputs,
             input_drvs,
             input_srcs,
@@ -192,20 +178,19 @@ pub fn parse_derivation(input: &str) -> IResult<&str, Derivation> {
             builder,
             args,
             env,
-        },
-    )(input)
+        })
+        .parse_next(input)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use winnow::{
-        error::ErrorKind,
-        error_position,
-        Err,
-    };
     use std::fs;
     use std::path::Path;
+    use winnow::error::{
+        ErrMode,
+        ErrorKind,
+    };
 
     #[test]
     fn release_packages() {
@@ -269,7 +254,10 @@ mod tests {
 
     #[test]
     fn derivation_outputs_empty() {
-        assert_eq!(parse_derivation_outputs(r#"[]"#), Err(Err::Backtrack(error_position!("]", ErrorKind::Many1))));
+        assert_eq!(
+            parse_derivation_outputs(r#"[]"#),
+            Err(ErrMode::Backtrack(winnow::error::Error::from_error_kind("]", ErrorKind::Many1)))
+        );
     }
 
     #[test]
