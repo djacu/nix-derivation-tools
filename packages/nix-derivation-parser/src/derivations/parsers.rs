@@ -13,13 +13,15 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use winnow::{
     bytes::tag,
-    combinator::opt,
+    combinator::{
+        opt,
+        fold_repeat,
+    },
     error::{
         FromExternalError,
         ParseError,
     },
     multi::{
-        fold_many1,
         separated0,
         separated1,
     },
@@ -39,7 +41,7 @@ use winnow::{
 fn parse_derivation_outputs(input: &str) -> IResult<&str, HashMap<String, DerivationOutput>> {
     delimited(
         tag("["),
-        fold_many1((parse_derivation_output, opt(tag(","))), HashMap::new, |mut map, ((key, value), _)| {
+        fold_repeat(1.., (parse_derivation_output, opt(tag(","))), HashMap::new, |mut map, ((key, value), _)| {
             map.insert(key, value);
             map
         }),
@@ -75,7 +77,7 @@ fn parse_derivation_output(input: &str) -> IResult<&str, (String, DerivationOutp
 fn parse_derivation_inputs(input: &str) -> IResult<&str, HashMap<PathBuf, DerivationInput>> {
     delimited(
         tag("["),
-        fold_many1((parse_derivation_input, opt(tag(","))), HashMap::new, |mut map, ((key, value), _)| {
+        fold_repeat(1.., (parse_derivation_input, opt(tag(","))), HashMap::new, |mut map, ((key, value), _)| {
             map.insert(key, value);
             map
         }),
